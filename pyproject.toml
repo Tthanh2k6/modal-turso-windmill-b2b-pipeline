@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "modal-turso-windmill-b2b-pipeline"
+version = "0.1.0"
+description = "Reference B2B lead enrichment and multi-tenant edge SQLite/FTS5 pipeline combining Modal Python workers, Turso Hrana HTTP v2, and Windmill OpenFlow"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+  { name = "Trung Thanh Tran", email = "ttrungthanh90@gmail.com" }
+]
+dependencies = [
+  "httpx>=0.26.0",
+  "PyYAML>=6.0.0",
+]
+
+[project.optional-dependencies]
+modal = [
+  "modal>=0.64.0",
+]
+dev = [
+  "pytest>=8.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src", "."]
+include = ["modal_turso_windmill*", "windmill_flows*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "."]
+testpaths = ["tests"]

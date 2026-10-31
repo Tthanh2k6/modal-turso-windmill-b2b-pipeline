@@ -1,0 +1,107 @@
+summary: Sync Enriched B2B Leads From Modal & Apify Into Tenant Turso FTS5 Database
+description: >-
+  Deterministic Windmill OpenFlow orchestrating Apify B2B lead ingestion,
+  Modal parallel enrichment/deduplication, and parameterized Turso Hrana HTTP v2
+  upserts with FTS5 full-text indexing.
+value:
+  modules:
+    - id: validate_and_enrich_batch
+      summary: Sanitize domains, filter noise emails, and compute ICP scores via Modal worker logic
+      value:
+        type: script
+        path: f/b2b_turso_sync/sync_b2b_leads_to_turso
+        input_transforms:
+          leads_payload:
+            type: javascript
+            expr: flow_input.leads_payload
+          turso_url:
+            type: static
+            value: auto-tenant
+          turso_auth_token:
+            type: static
+            value: ""
+          org_slug:
+            type: javascript
+            expr: flow_input.org_slug || "default-workspace"
+          fts_probe_query:
+            type: static
+            value: ""
+          dry_run:
+            type: static
+            value: true
+      retry:
+        constant:
+          attempts: 2
+          seconds: 5
+
+    - id: upsert_turso_hrana_v2
+      summary: Upsert deduplicated B2B leads into tenant Turso database over Hrana v2 HTTP pipeline
+      value:
+        type: script
+        path: f/b2b_turso_sync/sync_b2b_leads_to_turso
+        input_transforms:
+          leads_payload:
+            type: javascript
+            expr: flow_input.leads_payload
+          turso_url:
+            type: javascript
+            expr: flow_input.turso_url
+          turso_auth_token:
+            type: javascript
+            expr: flow_input.turso_auth_token
+          org_slug:
+            type: javascript
+            expr: flow_input.org_slug || "default-workspace"
+          fts_probe_query:
+            type: javascript
+            expr: flow_input.fts_probe_query || ""
+          dry_run:
+            type: javascript
+            expr: Boolean(flow_input.dry_run)
+      retry:
+        exponential:
+          attempts: 3
+          multiplier: 2
+          seconds: 3
+  failure_module:
+    id: on_pipeline_error
+    summary: Emit structured error payload for Slack or PagerDuty webhook routing
+    value:
+      type: rawscript
+      language: python3
+      content: |
+        def main(error: dict) -> dict:
+            return {"status": "failed", "alert_channel": "ops-b2b-sync", "error": error}
+      input_transforms:
+        error:
+          type: javascript
+          expr: error
+schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  required:
+    - leads_payload
+    - turso_url
+  properties:
+    leads_payload:
+      type: array
+      description: Raw company and contact records from Apify or inbound webhooks
+      items:
+        type: object
+    turso_url:
+      type: string
+      default: "sqlite://:memory:"
+      description: "Turso libsql:// or https:// endpoint, or sqlite://:memory: for sandbox runs"
+    turso_auth_token:
+      type: string
+      default: ""
+      description: Turso database Bearer JWT token
+    org_slug:
+      type: string
+      default: default-workspace
+    fts_probe_query:
+      type: string
+      default: ""
+    dry_run:
+      type: boolean
+      default: false
