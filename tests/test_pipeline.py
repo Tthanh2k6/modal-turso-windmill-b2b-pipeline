@@ -22,8 +22,8 @@ from windmill_flows.sync_b2b_leads_to_turso import main as windmill_main
 
 
 def test_turso_many_database_tenant_resolver() -> None:
-    url = resolve_tenant_turso_url("Pineapple AG!", turso_org="trung-b2b", aws_region="aws-eu-central-1")
-    assert url == "https://leads-pineapple-ag-trung-b2b.aws-eu-central-1.turso.io"
+    url = resolve_tenant_turso_url("Acme AG!", turso_org="trung-b2b", aws_region="aws-eu-central-1")
+    assert url == "https://leads-acme-ag-trung-b2b.aws-eu-central-1.turso.io"
     with pytest.raises(ValueError):
         resolve_tenant_turso_url("!!!")
 
@@ -51,7 +51,7 @@ def test_turso_hrana_v2_wire_protocol_and_bearer_auth() -> None:
                                 ],
                                 "rows": [
                                     [
-                                        {"type": "text", "value": "pineapple.ch"},
+                                        {"type": "text", "value": "acme.example.com"},
                                         {"type": "integer", "value": "95"},
                                         {"type": "null"},
                                     ]
@@ -86,7 +86,7 @@ def test_turso_hrana_v2_wire_protocol_and_bearer_auth() -> None:
         {"type": "integer", "value": "1"},
     ]
     assert reqs[1] == {"type": "close"}
-    assert rows == [[{"domain": "pineapple.ch", "icp_score": 95, "primary_email": None}]]
+    assert rows == [[{"domain": "acme.example.com", "icp_score": 95, "primary_email": None}]]
 
     assert encode_hrana_arg(3.14) == {"type": "float", "value": 3.14}
     assert encode_hrana_arg(None) == {"type": "null"}
@@ -99,9 +99,9 @@ def test_sqlite_fts5_upsert_idempotency_and_bm25_search() -> None:
         initial = [
             {
                 "idempotency_key": "idem_1",
-                "domain": "pineapple.ch",
-                "company_name": "pineapple AG",
-                "primary_email": "philipp.koch@pineapple.ch",
+                "domain": "acme.example.com",
+                "company_name": "Acme AG",
+                "primary_email": "jane.doe@acme.example.com",
                 "country_code": "CH",
                 "icp_score": 85,
                 "tech_stack": ["Retool", "PostgreSQL"],
@@ -124,8 +124,8 @@ def test_sqlite_fts5_upsert_idempotency_and_bm25_search() -> None:
         updated = [
             {
                 "idempotency_key": "idem_1_v2",
-                "domain": "pineapple.ch",
-                "company_name": "pineapple AG Switzerland",
+                "domain": "acme.example.com",
+                "company_name": "Acme AG Switzerland",
                 "primary_email": None,
                 "country_code": None,
                 "icp_score": 95,
@@ -137,9 +137,9 @@ def test_sqlite_fts5_upsert_idempotency_and_bm25_search() -> None:
 
         hits = store.search_leads_fts5("Windmill OR embedded", limit=5)
         assert len(hits) == 1
-        assert hits[0]["domain"] == "pineapple.ch"
-        assert hits[0]["company_name"] == "pineapple AG Switzerland"
-        assert hits[0]["primary_email"] == "philipp.koch@pineapple.ch"
+        assert hits[0]["domain"] == "acme.example.com"
+        assert hits[0]["company_name"] == "Acme AG Switzerland"
+        assert hits[0]["primary_email"] == "jane.doe@acme.example.com"
         assert hits[0]["icp_score"] == 95
     finally:
         store.close()
@@ -148,9 +148,9 @@ def test_sqlite_fts5_upsert_idempotency_and_bm25_search() -> None:
 def test_modal_parallel_map_fanout_and_cross_chunk_dedup() -> None:
     raw_items = [
         {
-            "website": "https://www.pineapple.ch/contact",
-            "companyName": "pineapple AG",
-            "emails": ["noreply@sentry.io", "info@pineapple.ch"],
+            "website": "https://www.acme.example.com/contact",
+            "companyName": "Acme AG",
+            "emails": ["noreply@sentry.io", "info@acme.example.com"],
             "techStack": ["PostgreSQL"],
             "description": "First partial crawl",
         },
@@ -161,9 +161,9 @@ def test_modal_parallel_map_fanout_and_cross_chunk_dedup() -> None:
             "techStack": ["Python", "HubSpot"],
         },
         {
-            "domain": "pineapple.ch",
-            "companyName": "pineapple AG",
-            "emails": ["philipp.koch@pineapple.ch"],
+            "domain": "acme.example.com",
+            "companyName": "Acme AG",
+            "emails": ["jane.doe@acme.example.com"],
             "techStack": ["PostgreSQL", "Retool", "Windmill"],
             "description": "Richer crawl in second Modal chunk",
         },
@@ -176,9 +176,9 @@ def test_modal_parallel_map_fanout_and_cross_chunk_dedup() -> None:
     assert res["chunks_dispatched"] == 2
     assert res["unique_leads"] == 2
     top = res["leads"][0]
-    assert top["domain"] == "pineapple.ch"
+    assert top["domain"] == "acme.example.com"
     assert top["icp_score"] == 100
-    assert top["primary_email"] == "philipp.koch@pineapple.ch"
+    assert top["primary_email"] == "jane.doe@acme.example.com"
 
 
 def test_modal_hmac_signature_and_replay_window() -> None:
